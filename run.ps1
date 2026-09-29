@@ -6,7 +6,7 @@
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
 
 # ── Versions ──
-$scriptVersion = "1.0.15"
+$scriptVersion = "1.0.16"
 $sniperVersion = "1.1.6 (custom: frag=1, verbose=on, auto-start, auto-tray)"
 $pythonVersion  = "3.12.8"
 $pyiVersion     = "6.x"
@@ -71,8 +71,8 @@ if (-not $pythonExe) {
         throw "Failed to download Python installer after $maxRetries attempts"
     }
     
-    # Install Python silently (user scope, no admin needed)
-    Start-Process -FilePath $installerPath -ArgumentList "/quiet", "InstallAllUsers=0", "PrependPath=1", "Include_test=0" -Wait
+    # Install Python silently (user scope, no admin needed, with tkinter)
+    Start-Process -FilePath $installerPath -ArgumentList "/quiet", "InstallAllUsers=0", "PrependPath=1", "Include_test=0", "Include_tcltk=1" -Wait
     Remove-Item $installerPath -Force
     
     # Refresh PATH
@@ -80,6 +80,12 @@ if (-not $pythonExe) {
     $pythonExe = (Get-Command python -ErrorAction SilentlyContinue).Source
     if (-not $pythonExe) {
         throw "Python installation failed"
+    }
+    
+    # Verify tkinter is available
+    & $pythonExe -c "import tkinter"
+    if ($LASTEXITCODE -ne 0) {
+        throw "tkinter is not available after Python installation"
     }
 }
 Write-Host "Python: $pythonExe" -ForegroundColor Gray
