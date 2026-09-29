@@ -6,7 +6,7 @@
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
 
 # ── Versions ──
-$scriptVersion = "1.0.10"
+$scriptVersion = "1.0.11"
 $sniperVersion = "1.1.6 (custom: frag=1, verbose=on, auto-start, auto-tray)"
 $pythonVersion  = "3.12.8"
 $pyiVersion     = "6.x"
@@ -94,6 +94,17 @@ if (-not (Test-Path $sniperExe)) {
     & $pythonExe $getPipPath 2>&1 | Out-Null
     if ($LASTEXITCODE -ne 0) {
         throw "get-pip.py failed to install pip"
+    }
+    
+    # Fix embedded Python path configuration
+    $pthFile = Get-ChildItem -Path $pythonDir -Filter "python*._pth" | Select-Object -First 1
+    if ($pthFile) {
+        $pthContent = Get-Content $pthFile.FullName
+        $sitePackagesLine = "Lib\site-packages"
+        if ($pthContent -notcontains $sitePackagesLine) {
+            Add-Content -Path $pthFile.FullName -Value $sitePackagesLine
+            Write-Host "Added Lib/site-packages to $($pthFile.Name)" -ForegroundColor Gray
+        }
     }
     
     # Copy pip module from Scripts to Lib/site-packages (embedded Python fix)
