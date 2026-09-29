@@ -6,7 +6,7 @@
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
 
 # ── Versions ──
-$scriptVersion = "1.0.20"
+$scriptVersion = "1.0.21"
 $sniperVersion = "1.1.6 (custom: frag=1, verbose=on, auto-start, auto-tray)"
 $pythonVersion  = "3.12.8"
 $pyiVersion     = "6.x"
@@ -94,38 +94,10 @@ Write-Host "Python: $pythonExe" -ForegroundColor Gray
 $sniperExe = "$PSScriptRoot\sniper-src\SNIper_x64.exe"
 $sniperSrc = "$PSScriptRoot\sniper-src"
 
-# Clone SNIper source if it doesn't exist
+# Copy SNIper source from script directory (already patched)
 if (-not (Test-Path "$sniperSrc\src\run_sniper.py")) {
-    Write-Host "Cloning SNIper source..." -ForegroundColor Cyan
-    if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
-        throw "Git not found. Please install Git first."
-    }
-    git clone https://github.com/Reuzola/SNIper.git $sniperSrc 2>&1 | Out-Null
-    if ($LASTEXITCODE -ne 0) {
-        throw "Failed to clone SNIper repository"
-    }
-}
-
-# Apply custom SNIper modifications (frag=1, verbose=on, auto-start, auto-tray)
-$uiFile = "$sniperSrc\src\sniper\ui.py"
-$configFile = "$sniperSrc\src\sniper\config.py"
-
-if (Test-Path $uiFile) {
-    $uiContent = Get-Content $uiFile -Raw
-    # Set fragment size default to 1
-    $uiContent = $uiContent -replace 'self\._frag_var\s*=\s*tk\.IntVar\(value=2\)', 'self._frag_var    = tk.IntVar(value=1)'
-    # Set verbose default to True
-    $uiContent = $uiContent -replace 'self\._verbose_var\s*=\s*tk\.BooleanVar\(value=False\)', 'self._verbose_var = tk.BooleanVar(value=True)'
-    # Add auto-start and auto-minimize after tray start
-    $uiContent = $uiContent -replace '(self\._tray\.start\(\))', "`$1`n`n        # Custom build: auto-start proxy and minimize to tray (background)`n        self._start()`n        self._hide_to_tray()"
-    Set-Content -Path $uiFile -Value $uiContent -NoNewline
-}
-
-if (Test-Path $configFile) {
-    $configContent = Get-Content $configFile -Raw
-    # Set DoH fragment size to 1
-    $configContent = $configContent -replace '_DOH_FRAGMENT_SIZE\s*=\s*2', '_DOH_FRAGMENT_SIZE = 1'
-    Set-Content -Path $configFile -Value $configContent -NoNewline
+    Write-Host "Copying SNIper source..." -ForegroundColor Cyan
+    Copy-Item -Path "$PSScriptRoot\sniper-src" -Destination $sniperSrc -Recurse -Force
 }
 
 # Build the custom SNIper EXE if it doesn't exist

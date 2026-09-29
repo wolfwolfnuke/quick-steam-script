@@ -1,5 +1,10 @@
-# Cloned SNIper source (pulled from upstream, not part of this repo)
-sniper-src/
+# Build artifacts
+*.exe
+*.spec
+packaging/build/
+packaging/dist/
+__pycache__/
+*.pyc
 
 # Build artifacts
 *.exe
