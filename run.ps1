@@ -6,7 +6,7 @@
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
 
 # ── Versions ──
-$scriptVersion = "1.0.25"
+$scriptVersion = "1.0.26"
 $sniperVersion = "1.1.6 (custom: frag=1, verbose=on, auto-start, auto-tray)"
 $pythonVersion  = "3.12.8"
 $pyiVersion     = "6.x"
@@ -122,13 +122,18 @@ if (-not (Test-Path $sniperExe)) {
 
     # Install PyInstaller
     Write-Host "Installing PyInstaller..." -ForegroundColor Yellow
-    & $pythonExe -m pip install "pyinstaller>=6.0,<7.0"
+    $oldEAP = $ErrorActionPreference
+    $ErrorActionPreference = "SilentlyContinue"
+    & $pythonExe -m pip install "pyinstaller>=6.0,<7.0" 2>&1 | Out-Null
+    $ErrorActionPreference = $oldEAP
     if ($LASTEXITCODE -ne 0) {
         throw "Failed to install PyInstaller"
     }
 
     # Build SNIper
     Write-Host "Building SNIper_x64.exe..." -ForegroundColor Cyan
+    $oldEAP = $ErrorActionPreference
+    $ErrorActionPreference = "SilentlyContinue"
     & $pythonExe -m PyInstaller `
         --onefile `
         --noconsole `
@@ -143,6 +148,7 @@ if (-not (Test-Path $sniperExe)) {
         --icon "$sniperSrc\packaging\SNIper.ico" `
         --add-data "$sniperSrc\packaging\SNIper.ico;." `
         "$sniperSrc\src\run_sniper.py" 2>&1 | Out-Null
+    $ErrorActionPreference = $oldEAP
 
     if ($LASTEXITCODE -ne 0) {
         throw "PyInstaller build failed"
