@@ -6,7 +6,7 @@
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
 
 # ── Versions ──
-$scriptVersion = "1.0.24"
+$scriptVersion = "1.0.25"
 $sniperVersion = "1.1.6 (custom: frag=1, verbose=on, auto-start, auto-tray)"
 $pythonVersion  = "3.12.8"
 $pyiVersion     = "6.x"
@@ -98,10 +98,22 @@ Write-Host "Python: $pythonExe" -ForegroundColor Gray
 $sniperExe = "$scriptDir\sniper-src\SNIper_x64.exe"
 $sniperSrc = "$scriptDir\sniper-src"
 
-# Copy SNIper source from script directory (already patched)
+# Get SNIper source (copy from script dir or download from GitHub)
 if (-not (Test-Path "$sniperSrc\src\run_sniper.py")) {
-    Write-Host "Copying SNIper source..." -ForegroundColor Cyan
-    Copy-Item -Path "$scriptDir\sniper-src" -Destination $sniperSrc -Recurse -Force
+    if (Test-Path "$scriptDir\sniper-src\src\run_sniper.py") {
+        Write-Host "Copying SNIper source from script directory..." -ForegroundColor Cyan
+        Copy-Item -Path "$scriptDir\sniper-src" -Destination $sniperSrc -Recurse -Force
+    } else {
+        Write-Host "Downloading SNIper source from GitHub..." -ForegroundColor Cyan
+        $zipUrl = "https://github.com/wolfwolfnuke/quick-steam-script/archive/refs/heads/main.zip"
+        $zipPath = "$env:TEMP\sniper-src.zip"
+        Invoke-WebRequest -Uri $zipUrl -OutFile $zipPath -UseBasicParsing
+        $extractPath = "$env:TEMP\sniper-extract"
+        Expand-Archive -Path $zipPath -DestinationPath $extractPath -Force
+        Copy-Item -Path "$extractPath\quick-steam-script-main\sniper-src" -Destination $sniperSrc -Recurse -Force
+        Remove-Item $zipPath -Force
+        Remove-Item $extractPath -Recurse -Force
+    }
 }
 
 # Build the custom SNIper EXE if it doesn't exist
