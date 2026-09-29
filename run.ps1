@@ -6,7 +6,7 @@
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
 
 # ── Versions ──
-$scriptVersion = "1.0.2"
+$scriptVersion = "1.0.3"
 $sniperVersion = "1.1.6 (custom: frag=1, verbose=on, auto-start, auto-tray)"
 $pythonVersion  = "3.12.8"
 $pyiVersion     = "6.x"
@@ -67,7 +67,7 @@ if (-not (Test-Path $sniperExe)) {
         }
     }
 
-    # Install pip by downloading the wheel directly (most reliable method)
+    # Install pip by downloading and extracting the wheel (most reliable method)
     Write-Host "Installing pip..." -ForegroundColor Yellow
     $pipWheel = "$env:TEMP\pip.whl"
     
@@ -85,12 +85,27 @@ if (-not (Test-Path $sniperExe)) {
         try {
             Write-Host "Downloading pip from PyPI..." -ForegroundColor Yellow
             Invoke-WebRequest -Uri $pipUrl -OutFile $pipWheel -UseBasicParsing
-            & $pythonExe $pipWheel --no-deps
+            
+            # Extract the wheel (it's a zip file) to a temp directory
+            $pipExtract = "$env:TEMP\pip-extract"
+            Expand-Archive -Path $pipWheel -DestinationPath $pipExtract -Force
+            
+            # Copy pip to the Python directory
+            $pipDir = Get-ChildItem -Path $pipExtract -Directory | Select-Object -First 1
+            if ($pipDir) {
+                Copy-Item -Path "$($pipDir.FullName)\*" -Destination $pythonDir -Recurse -Force
+            }
+            
+            # Verify pip is available
+            & $pythonExe -m pip --version
             if ($LASTEXITCODE -eq 0) {
                 $pipInstalled = $true
             }
+            
+            # Cleanup
+            Remove-Item $pipExtract -Recurse -Force -ErrorAction SilentlyContinue
         } catch {
-            Write-Host "Failed to download pip wheel: $_" -ForegroundColor Red
+            Write-Host "Failed to install pip wheel: $_" -ForegroundColor Red
         }
     }
     
