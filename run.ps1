@@ -6,7 +6,7 @@
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
 
 # ── Versions ──
-$scriptVersion = "1.0.1"
+$scriptVersion = "1.0.2"
 $sniperVersion = "1.1.6 (custom: frag=1, verbose=on, auto-start, auto-tray)"
 $pythonVersion  = "3.12.8"
 $pyiVersion     = "6.x"
@@ -70,25 +70,27 @@ if (-not (Test-Path $sniperExe)) {
     # Install pip by downloading the wheel directly (most reliable method)
     Write-Host "Installing pip..." -ForegroundColor Yellow
     $pipWheel = "$env:TEMP\pip.whl"
-    $pipUrl = "https://pypi.org/packages/source/p/pip/pip-24.0-py3-none-any.whl"
     
-    # Try multiple pip wheel URLs
-    $pipUrls = @(
-        "https://pypi.org/packages/source/p/pip/pip-24.0-py3-none-any.whl",
-        "https://files.pythonhosted.org/packages/source/p/pip/pip-24.0-py3-none-any.whl"
-    )
+    # Use PyPI JSON API to get the latest pip wheel URL
+    $pipUrl = $null
+    try {
+        $pipRelease = Invoke-RestMethod -Uri "https://pypi.org/pypi/pip/json" -UseBasicParsing
+        $pipUrl = $pipRelease.urls | Where-Object { $_.filename -like "pip-*-py3-none-any.whl" } | Select-Object -First 1 -ExpandProperty url
+    } catch {
+        Write-Host "Failed to query PyPI API: $_" -ForegroundColor Red
+    }
     
     $pipInstalled = $false
-    foreach ($url in $pipUrls) {
+    if ($pipUrl) {
         try {
-            Invoke-WebRequest -Uri $url -OutFile $pipWheel -UseBasicParsing
+            Write-Host "Downloading pip from PyPI..." -ForegroundColor Yellow
+            Invoke-WebRequest -Uri $pipUrl -OutFile $pipWheel -UseBasicParsing
             & $pythonExe $pipWheel --no-deps
             if ($LASTEXITCODE -eq 0) {
                 $pipInstalled = $true
-                break
             }
         } catch {
-            Write-Host "Failed to download pip from $url : $_" -ForegroundColor Red
+            Write-Host "Failed to download pip wheel: $_" -ForegroundColor Red
         }
     }
     
