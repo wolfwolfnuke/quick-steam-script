@@ -6,7 +6,7 @@
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
 
 # ── Versions ──
-$scriptVersion = "1.0.28"
+$scriptVersion = "1.0.29"
 $sniperVersion = "1.1.6 (custom: frag=1, verbose=on, auto-start, auto-tray)"
 $pythonVersion  = "3.12.8"
 $pyiVersion     = "6.x"
@@ -120,6 +120,12 @@ if (-not (Test-Path "$sniperSrc\src\run_sniper.py")) {
 if (-not (Test-Path $sniperExe)) {
     Write-Host "Building custom SNIper (frag size 1, verbose, auto-background)..." -ForegroundColor Cyan
 
+    # Verify source exists
+    if (-not (Test-Path "$sniperSrc\src\run_sniper.py")) {
+        throw "SNIper source not found at $sniperSrc\src\run_sniper.py"
+    }
+    Write-Host "Source found at: $sniperSrc\src\run_sniper.py" -ForegroundColor Gray
+
     # Install PyInstaller
     Write-Host "Installing PyInstaller..." -ForegroundColor Yellow
     $oldEAP = $ErrorActionPreference
@@ -149,7 +155,7 @@ if (-not (Test-Path $sniperExe)) {
 
     if ($LASTEXITCODE -ne 0) {
         Write-Host "PyInstaller build failed. Output:" -ForegroundColor Red
-        $buildOutput | ForEach-Object { Write-Host "  $_" -ForegroundColor Red }
+        ($buildOutput | Out-String).Trim() -split "`n" | ForEach-Object { Write-Host "  $_" -ForegroundColor Red }
         throw "PyInstaller build failed"
     }
 
