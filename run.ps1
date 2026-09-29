@@ -6,7 +6,7 @@
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
 
 # ── Versions ──
-$scriptVersion = "1.0.4"
+$scriptVersion = "1.0.5"
 $sniperVersion = "1.1.6 (custom: frag=1, verbose=on, auto-start, auto-tray)"
 $pythonVersion  = "3.12.8"
 $pyiVersion     = "6.x"
@@ -94,9 +94,15 @@ if (-not (Test-Path $sniperExe)) {
             Remove-Item $pipZip -Force
             
             # Copy pip to the Python directory
-            $pipDir = Get-ChildItem -Path $pipExtract -Directory | Select-Object -First 1
+            $pipDir = Get-ChildItem -Path $pipExtract -Directory | Where-Object { $_.Name -like "pip-*" } | Select-Object -First 1
             if ($pipDir) {
-                Copy-Item -Path "$($pipDir.FullName)\*" -Destination $pythonDir -Recurse -Force
+                # Copy the pip module directory
+                $pipModuleDir = Get-ChildItem -Path $pipExtract -Directory | Where-Object { $_.Name -eq "pip" } | Select-Object -First 1
+                if ($pipModuleDir) {
+                    Copy-Item -Path $pipModuleDir.FullName -Destination $pythonDir -Recurse -Force
+                }
+                # Copy dist-info
+                Copy-Item -Path "$($pipDir.FullName)" -Destination $pythonDir -Recurse -Force
             }
             
             # Verify pip is available
