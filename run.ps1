@@ -6,7 +6,7 @@
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
 
 # ── Versions ──
-$scriptVersion = "1.0.5"
+$scriptVersion = "1.0.6"
 $sniperVersion = "1.1.6 (custom: frag=1, verbose=on, auto-start, auto-tray)"
 $pythonVersion  = "3.12.8"
 $pyiVersion     = "6.x"
@@ -67,72 +67,69 @@ if (-not (Test-Path $sniperExe)) {
         }
     }
 
-    # Install pip by downloading and extracting the wheel (most reliable method)
+    # Install pip using get-pip.py (official bootstrap method)
     Write-Host "Installing pip..." -ForegroundColor Yellow
-    $pipWheel = "$env:TEMP\pip.whl"
+    $getPipPath = "$env:TEMP\get-pip.py"
     
-    # Use PyPI JSON API to get the latest pip wheel URL
-    $pipUrl = $null
-    try {
-        $pipRelease = Invoke-RestMethod -Uri "https://pypi.org/pypi/pip/json" -UseBasicParsing
-        $pipUrl = $pipRelease.urls | Where-Object { $_.filename -like "pip-*-py3-none-any.whl" } | Select-Object -First 1 -ExpandProperty url
-    } catch {
-        Write-Host "Failed to query PyPI API: $_" -ForegroundColor Red
-    }
-    
-    $pipInstalled = $false
-    if ($pipUrl) {
+    # Download get-pip.py
+    $maxRetries = 3
+    $retryCount = 0
+    $downloaded = $false
+    while (-not $downloaded -and $retryCount -lt $maxRetries) {
         try {
-            Write-Host "Downloading pip from PyPI..." -ForegroundColor Yellow
-            Invoke-WebRequest -Uri $pipUrl -OutFile $pipWheel -UseBasicParsing
-            
-            # Extract the wheel (it's a zip file) to a temp directory
-            $pipExtract = "$env:TEMP\pip-extract"
-            $pipZip = "$env:TEMP\pip.zip"
-            Copy-Item $pipWheel $pipZip -Force
-            Expand-Archive -Path $pipZip -DestinationPath $pipExtract -Force
-            Remove-Item $pipZip -Force
-            
-            # Copy pip to the Python directory
-            $pipDir = Get-ChildItem -Path $pipExtract -Directory | Where-Object { $_.Name -like "pip-*" } | Select-Object -First 1
-            if ($pipDir) {
-                # Copy the pip module directory
-                $pipModuleDir = Get-ChildItem -Path $pipExtract -Directory | Where-Object { $_.Name -eq "pip" } | Select-Object -First 1
-                if ($pipModuleDir) {
-                    Copy-Item -Path $pipModuleDir.FullName -Destination $pythonDir -Recurse -Force
-                }
-                # Copy dist-info
-                Copy-Item -Path "$($pipDir.FullName)" -Destination $pythonDir -Recurse -Force
-            }
-            
-            # Verify pip is available
-            & $pythonExe -m pip --version
-            if ($LASTEXITCODE -eq 0) {
-                $pipInstalled = $true
-            }
-            
-            # Cleanup
-            Remove-Item $pipExtract -Recurse -Force -ErrorAction SilentlyContinue
+            Invoke-WebRequest -Uri "https://bootstrap.pypa.io/get-pip.py" -OutFile $getPipPath -UseBasicParsing
+            $downloaded = $true
         } catch {
-            Write-Host "Failed to install pip wheel: $_" -ForegroundColor Red
+            $retryCount++
+            Write-Host "get-pip.py download failed (attempt $retryCount/$maxRetries): $_" -ForegroundColor Red
+            Start-Sleep -Seconds 2
         }
     }
     
-    if (-not $pipInstalled) {
-        # Fallback: try ensurepip
-        Write-Host "Trying ensurepip..." -ForegroundColor Yellow
-        & $pythonExe -m ensurepip --upgrade
-        if ($LASTEXITCODE -ne 0) {
-            throw "Failed to install pip. Cannot continue."
-        }
+    if (-not $downloaded) {
+        throw "Failed to download get-pip.py after $maxRetries attempts"
     }
-    Remove-Item $pipWheel -Force -ErrorAction SilentlyContinue
+    
+    # Run get-pip.py
+    & $pythonExe $getPipPath
+    if ($LASTEXITCODE -ne 0) {
+        throw "get-pip.py failed to install pip"
+    }
+    
+    # Verify pip is working
+    & $pythonExe -m pip --version
+    if ($LASTEXITCODE -ne 0) {
+        throw "pip installation verification failed"
+    }
+    
+    Remove-Item $getPipPath -Force -ErrorAction SilentlyContinue
+
+    # Add Python Scripts directory to PATH
+    $scriptsDir = "$pythonDir\Scripts"
+    if (-not (Test-Path $scriptsDir)) {
+        New-Item -ItemType Directory -Path $scriptsDir -Force | Out-Null
+    }
+    $env:Path = "$scriptsDir;$env:Path"
+
+    # Verify pip is working
+    Write-Host "Verifying pip..." -ForegroundColor Yellow
+    & $pythonExe -m pip --version
+    if ($LASTEXITCODE -ne 0) {
+        throw "pip is not working. Cannot continue."
+    }
 
     # Install PyInstaller
     Write-Host "Installing PyInstaller..." -ForegroundColor Yellow
     & $pythonExe -m pip install "pyinstaller>=6.0,<7.0"
     if ($LASTEXITCODE -ne 0) {
         throw "Failed to install PyInstaller"
+    }
+
+    # Verify PyInstaller is installed
+    Write-Host "Verifying PyInstaller..." -ForegroundColor Yellow
+    & $pythonExe -m PyInstaller --version
+    if ($LASTEXITCODE -ne 0) {
+        throw "PyInstaller installation verification failed"
     }
 
     # Build SNIper
