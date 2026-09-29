@@ -110,9 +110,14 @@ if (Test-Path $sniperExe) {
     Write-Warning "SNIper EXE not found. Skipping launch."
 }
 
-# Install Scoop
-Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
-irm get.scoop.sh | iex
+# Install Scoop (skip if already installed)
+if (-not (Get-Command scoop -ErrorAction SilentlyContinue)) {
+    Write-Host "Installing Scoop..." -ForegroundColor Cyan
+    Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
+    irm get.scoop.sh | iex
+} else {
+    Write-Host "Scoop already installed, skipping." -ForegroundColor Green
+}
 
 # Make sure Scoop is available in this session
 $env:Path += ";$env:USERPROFILE\scoop\shims"
