@@ -6,7 +6,7 @@
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
 
 # ── Versions ──
-$scriptVersion = "1.0.7"
+$scriptVersion = "1.0.8"
 $sniperVersion = "1.1.6 (custom: frag=1, verbose=on, auto-start, auto-tray)"
 $pythonVersion  = "3.12.8"
 $pyiVersion     = "6.x"
@@ -131,6 +131,12 @@ if (-not (Test-Path $sniperExe)) {
     & $pythonExe -m PyInstaller --version
     if ($LASTEXITCODE -ne 0) {
         throw "PyInstaller installation verification failed"
+    }
+
+    # Ensure Scripts dir is on PATH for pyinstaller.exe
+    $scriptsDir = "$pythonDir\Scripts"
+    if (Test-Path $scriptsDir) {
+        $env:Path = "$scriptsDir;$env:Path"
     }
 
     # Build SNIper
