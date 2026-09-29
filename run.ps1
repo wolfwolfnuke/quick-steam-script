@@ -5,6 +5,24 @@
 # Allow locally created scripts and scripts downloaded from the internet
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
 
+# ── Versions ──
+$scriptVersion = "1.0.0"
+$sniperVersion = "1.1.6 (custom: frag=1, verbose=on, auto-start, auto-tray)"
+$pythonVersion  = "3.12.8"
+$pyiVersion     = "6.x"
+$scoopVersion   = "latest"
+$gitVersion     = "latest"
+$steamVersion   = "latest"
+
+Write-Host "=== Quick Steam Script v$scriptVersion ===" -ForegroundColor Cyan
+Write-Host "  SNIper    : $sniperVersion" -ForegroundColor Gray
+Write-Host "  Python    : $pythonVersion (embedded)" -ForegroundColor Gray
+Write-Host "  PyInstaller: $pyiVersion" -ForegroundColor Gray
+Write-Host "  Scoop     : $scoopVersion" -ForegroundColor Gray
+Write-Host "  Git       : $gitVersion" -ForegroundColor Gray
+Write-Host "  Steam     : $steamVersion" -ForegroundColor Gray
+Write-Host ""
+
 # ── Build & launch custom SNIper (frag size 1, verbose, auto-background) ──
 $sniperExe = "$PSScriptRoot\sniper-src\SNIper_x64.exe"
 $sniperSrc = "$PSScriptRoot\sniper-src"
