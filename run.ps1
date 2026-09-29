@@ -6,7 +6,7 @@
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
 
 # ── Versions ──
-$scriptVersion = "1.0.9"
+$scriptVersion = "1.0.10"
 $sniperVersion = "1.1.6 (custom: frag=1, verbose=on, auto-start, auto-tray)"
 $pythonVersion  = "3.12.8"
 $pyiVersion     = "6.x"
@@ -96,19 +96,24 @@ if (-not (Test-Path $sniperExe)) {
         throw "get-pip.py failed to install pip"
     }
     
-    # Copy pip module from Scripts to main Python directory (embedded Python fix)
+    # Copy pip module from Scripts to Lib/site-packages (embedded Python fix)
     $scriptsDir = "$pythonDir\Scripts"
+    $sitePackagesDir = "$pythonDir\Lib\site-packages"
+    if (-not (Test-Path $sitePackagesDir)) {
+        New-Item -ItemType Directory -Path $sitePackagesDir -Force | Out-Null
+    }
+    
     $pipModuleSrc = "$scriptsDir\pip"
-    $pipModuleDst = "$pythonDir\pip"
+    $pipModuleDst = "$sitePackagesDir\pip"
     if ((Test-Path $pipModuleSrc) -and -not (Test-Path $pipModuleDst)) {
-        Copy-Item -Path $pipModuleSrc -Destination $pythonDir -Recurse -Force
+        Copy-Item -Path $pipModuleSrc -Destination $sitePackagesDir -Recurse -Force
     }
     # Also copy pip dist-info if it exists
     $pipDistInfoSrc = Get-ChildItem -Path $scriptsDir -Directory -Filter "pip-*" -ErrorAction SilentlyContinue | Select-Object -First 1
     if ($pipDistInfoSrc) {
-        $pipDistInfoDst = "$pythonDir\$($pipDistInfoSrc.Name)"
+        $pipDistInfoDst = "$sitePackagesDir\$($pipDistInfoSrc.Name)"
         if (-not (Test-Path $pipDistInfoDst)) {
-            Copy-Item -Path $pipDistInfoSrc.FullName -Destination $pythonDir -Recurse -Force
+            Copy-Item -Path $pipDistInfoSrc.FullName -Destination $sitePackagesDir -Recurse -Force
         }
     }
     
