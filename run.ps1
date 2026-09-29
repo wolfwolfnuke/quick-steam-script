@@ -6,7 +6,7 @@
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
 
 # ── Versions ──
-$scriptVersion = "1.0.11"
+$scriptVersion = "1.0.12"
 $sniperVersion = "1.1.6 (custom: frag=1, verbose=on, auto-start, auto-tray)"
 $pythonVersion  = "3.12.8"
 $pyiVersion     = "6.x"
@@ -26,6 +26,18 @@ Write-Host ""
 # ── Build & launch custom SNIper (frag size 1, verbose, auto-background) ──
 $sniperExe = "$PSScriptRoot\sniper-src\SNIper_x64.exe"
 $sniperSrc = "$PSScriptRoot\sniper-src"
+
+# Clone SNIper source if it doesn't exist
+if (-not (Test-Path "$sniperSrc\src\run_sniper.py")) {
+    Write-Host "Cloning SNIper source..." -ForegroundColor Cyan
+    if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
+        throw "Git not found. Please install Git first."
+    }
+    git clone https://github.com/Reuzola/SNIper.git $sniperSrc
+    if ($LASTEXITCODE -ne 0) {
+        throw "Failed to clone SNIper repository"
+    }
+}
 
 # Build the custom SNIper EXE if it doesn't exist
 if (-not (Test-Path $sniperExe)) {
