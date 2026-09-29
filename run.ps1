@@ -6,7 +6,7 @@
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
 
 # ── Versions ──
-$scriptVersion = "1.0.14"
+$scriptVersion = "1.0.15"
 $sniperVersion = "1.1.6 (custom: frag=1, verbose=on, auto-start, auto-tray)"
 $pythonVersion  = "3.12.8"
 $pyiVersion     = "6.x"
@@ -45,6 +45,10 @@ if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
 
 # ── Install Python (skip if already installed) ──
 $pythonExe = (Get-Command python -ErrorAction SilentlyContinue).Source
+# Skip Windows Store stub
+if ($pythonExe -and $pythonExe -like "*WindowsApps*") {
+    $pythonExe = $null
+}
 if (-not $pythonExe) {
     Write-Host "Installing Python $pythonVersion..." -ForegroundColor Cyan
     $installerUrl = "https://www.python.org/ftp/python/3.12.8/python-3.12.8-amd64.exe"
@@ -152,5 +156,9 @@ if (Test-Path $sniperExe) {
 
 # ── Install Steam via Scoop ──
 Write-Host "Installing Steam..." -ForegroundColor Cyan
-scoop bucket add extras
+$extrasBucket = scoop bucket list | Select-String "extras"
+if (-not $extrasBucket) {
+    scoop bucket add extras
+}
+scoop update
 scoop install steam
