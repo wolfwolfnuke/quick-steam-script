@@ -6,7 +6,7 @@
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
 
 # ── Versions ──
-$scriptVersion = "1.0.29"
+$scriptVersion = "1.0.30"
 $sniperVersion = "1.1.6 (custom: frag=1, verbose=on, auto-start, auto-tray)"
 $pythonVersion  = "3.12.8"
 $pyiVersion     = "6.x"
@@ -138,24 +138,11 @@ if (-not (Test-Path $sniperExe)) {
 
     # Build SNIper
     Write-Host "Building SNIper_x64.exe..." -ForegroundColor Cyan
-    $buildOutput = & $pythonExe -m PyInstaller `
-        --onefile `
-        --noconsole `
-        --noupx `
-        --clean `
-        --noconfirm `
-        --paths "$sniperSrc\src" `
-        --name "SNIper_x64" `
-        --distpath "$sniperSrc\packaging\dist" `
-        --workpath "$sniperSrc\packaging\build" `
-        --specpath "$sniperSrc\packaging" `
-        --icon "$sniperSrc\packaging\SNIper.ico" `
-        --add-data "$sniperSrc\packaging\SNIper.ico;." `
-        "$sniperSrc\src\run_sniper.py" 2>&1
+    $buildOutput = & cmd /c "`"$pythonExe`" -m PyInstaller --onefile --noconsole --noupx --clean --noconfirm --paths `"$sniperSrc\src`" --name `"SNIper_x64`" --distpath `"$sniperSrc\packaging\dist`" --workpath `"$sniperSrc\packaging\build`" --specpath `"$sniperSrc\packaging`" --icon `"$sniperSrc\packaging\SNIper.ico`" --add-data `"$sniperSrc\packaging\SNIper.ico;."` `"$sniperSrc\src\run_sniper.py`" 2>&1"
 
     if ($LASTEXITCODE -ne 0) {
         Write-Host "PyInstaller build failed. Output:" -ForegroundColor Red
-        ($buildOutput | Out-String).Trim() -split "`n" | ForEach-Object { Write-Host "  $_" -ForegroundColor Red }
+        $buildOutput | ForEach-Object { Write-Host "  $_" -ForegroundColor Red }
         throw "PyInstaller build failed"
     }
 
