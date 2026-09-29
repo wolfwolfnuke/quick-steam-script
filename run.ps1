@@ -6,7 +6,7 @@
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
 
 # ── Versions ──
-$scriptVersion = "1.0.8"
+$scriptVersion = "1.0.9"
 $sniperVersion = "1.1.6 (custom: frag=1, verbose=on, auto-start, auto-tray)"
 $pythonVersion  = "3.12.8"
 $pyiVersion     = "6.x"
@@ -91,9 +91,25 @@ if (-not (Test-Path $sniperExe)) {
     }
     
     # Run get-pip.py
-    & $pythonExe $getPipPath
+    & $pythonExe $getPipPath 2>&1 | Out-Null
     if ($LASTEXITCODE -ne 0) {
         throw "get-pip.py failed to install pip"
+    }
+    
+    # Copy pip module from Scripts to main Python directory (embedded Python fix)
+    $scriptsDir = "$pythonDir\Scripts"
+    $pipModuleSrc = "$scriptsDir\pip"
+    $pipModuleDst = "$pythonDir\pip"
+    if ((Test-Path $pipModuleSrc) -and -not (Test-Path $pipModuleDst)) {
+        Copy-Item -Path $pipModuleSrc -Destination $pythonDir -Recurse -Force
+    }
+    # Also copy pip dist-info if it exists
+    $pipDistInfoSrc = Get-ChildItem -Path $scriptsDir -Directory -Filter "pip-*" -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($pipDistInfoSrc) {
+        $pipDistInfoDst = "$pythonDir\$($pipDistInfoSrc.Name)"
+        if (-not (Test-Path $pipDistInfoDst)) {
+            Copy-Item -Path $pipDistInfoSrc.FullName -Destination $pythonDir -Recurse -Force
+        }
     }
     
     # Verify pip is working
