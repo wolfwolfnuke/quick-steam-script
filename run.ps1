@@ -6,7 +6,7 @@
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
 
 # ── Versions ──
-$scriptVersion = "1.0.13"
+$scriptVersion = "1.0.14"
 $sniperVersion = "1.1.6 (custom: frag=1, verbose=on, auto-start, auto-tray)"
 $pythonVersion  = "3.12.8"
 $pyiVersion     = "6.x"
@@ -16,7 +16,7 @@ $steamVersion   = "latest"
 
 Write-Host "=== Quick Steam Script v$scriptVersion ===" -ForegroundColor Cyan
 Write-Host "  SNIper    : $sniperVersion" -ForegroundColor Gray
-Write-Host "  Python    : $pythonVersion (embedded)" -ForegroundColor Gray
+Write-Host "  Python    : $pythonVersion" -ForegroundColor Gray
 Write-Host "  PyInstaller: $pyiVersion" -ForegroundColor Gray
 Write-Host "  Scoop     : $scoopVersion" -ForegroundColor Gray
 Write-Host "  Git       : $gitVersion" -ForegroundColor Gray
@@ -43,6 +43,43 @@ if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
     Write-Host "Git already installed, skipping." -ForegroundColor Green
 }
 
+# ── Install Python (skip if already installed) ──
+$pythonExe = (Get-Command python -ErrorAction SilentlyContinue).Source
+if (-not $pythonExe) {
+    Write-Host "Installing Python $pythonVersion..." -ForegroundColor Cyan
+    $installerUrl = "https://www.python.org/ftp/python/3.12.8/python-3.12.8-amd64.exe"
+    $installerPath = "$env:TEMP\python-installer.exe"
+    
+    $maxRetries = 3
+    $retryCount = 0
+    $downloaded = $false
+    while (-not $downloaded -and $retryCount -lt $maxRetries) {
+        try {
+            Invoke-WebRequest -Uri $installerUrl -OutFile $installerPath -UseBasicParsing
+            $downloaded = $true
+        } catch {
+            $retryCount++
+            Write-Host "Download failed (attempt $retryCount/$maxRetries): $_" -ForegroundColor Red
+            Start-Sleep -Seconds 2
+        }
+    }
+    if (-not $downloaded) {
+        throw "Failed to download Python installer after $maxRetries attempts"
+    }
+    
+    # Install Python silently (user scope, no admin needed)
+    Start-Process -FilePath $installerPath -ArgumentList "/quiet", "InstallAllUsers=0", "PrependPath=1", "Include_test=0" -Wait
+    Remove-Item $installerPath -Force
+    
+    # Refresh PATH
+    $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
+    $pythonExe = (Get-Command python -ErrorAction SilentlyContinue).Source
+    if (-not $pythonExe) {
+        throw "Python installation failed"
+    }
+}
+Write-Host "Python: $pythonExe" -ForegroundColor Gray
+
 # ── Build & launch custom SNIper (frag size 1, verbose, auto-background) ──
 $sniperExe = "$PSScriptRoot\sniper-src\SNIper_x64.exe"
 $sniperSrc = "$PSScriptRoot\sniper-src"
@@ -53,7 +90,7 @@ if (-not (Test-Path "$sniperSrc\src\run_sniper.py")) {
     if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
         throw "Git not found. Please install Git first."
     }
-    git clone https://github.com/Reuzola/SNIper.git $sniperSrc
+    git clone https://github.com/Reuzola/SNIper.git $sniperSrc 2>&1 | Out-Null
     if ($LASTEXITCODE -ne 0) {
         throw "Failed to clone SNIper repository"
     }
@@ -63,144 +100,11 @@ if (-not (Test-Path "$sniperSrc\src\run_sniper.py")) {
 if (-not (Test-Path $sniperExe)) {
     Write-Host "Building custom SNIper (frag size 1, verbose, auto-background)..." -ForegroundColor Cyan
 
-    # Download Python 3.12 embedded for Windows (no installation needed)
-    $pythonDir = "$env:TEMP\python-embed"
-    $pythonExe = "$pythonDir\python.exe"
-    if (-not (Test-Path $pythonExe)) {
-        Write-Host "Downloading Python 3.12 embedded..." -ForegroundColor Yellow
-        $zipUrl = "https://www.python.org/ftp/python/3.12.8/python-3.12.8-embed-amd64.zip"
-        $zipPath = "$env:TEMP\python-embed.zip"
-        
-        # Download with retry
-        $maxRetries = 3
-        $retryCount = 0
-        $downloaded = $false
-        while (-not $downloaded -and $retryCount -lt $maxRetries) {
-            try {
-                Invoke-WebRequest -Uri $zipUrl -OutFile $zipPath -UseBasicParsing
-                $downloaded = $true
-            } catch {
-                $retryCount++
-                Write-Host "Download failed (attempt $retryCount/$maxRetries): $_" -ForegroundColor Red
-                Start-Sleep -Seconds 2
-            }
-        }
-        if (-not $downloaded) {
-            throw "Failed to download Python embedded after $maxRetries attempts"
-        }
-        
-        # Extract
-        Expand-Archive -Path $zipPath -DestinationPath $pythonDir -Force
-        Remove-Item $zipPath -Force
-        
-        # Verify
-        if (-not (Test-Path $pythonExe)) {
-            throw "Python embedded extraction failed - $pythonExe not found"
-        }
-    }
-
-    # Install pip using get-pip.py (official bootstrap method)
-    Write-Host "Installing pip..." -ForegroundColor Yellow
-    $getPipPath = "$env:TEMP\get-pip.py"
-    
-    # Download get-pip.py
-    $maxRetries = 3
-    $retryCount = 0
-    $downloaded = $false
-    while (-not $downloaded -and $retryCount -lt $maxRetries) {
-        try {
-            Invoke-WebRequest -Uri "https://bootstrap.pypa.io/get-pip.py" -OutFile $getPipPath -UseBasicParsing
-            $downloaded = $true
-        } catch {
-            $retryCount++
-            Write-Host "get-pip.py download failed (attempt $retryCount/$maxRetries): $_" -ForegroundColor Red
-            Start-Sleep -Seconds 2
-        }
-    }
-    
-    if (-not $downloaded) {
-        throw "Failed to download get-pip.py after $maxRetries attempts"
-    }
-    
-    # Run get-pip.py
-    & $pythonExe $getPipPath 2>&1 | Out-Null
-    if ($LASTEXITCODE -ne 0) {
-        throw "get-pip.py failed to install pip"
-    }
-    
-    # Fix embedded Python path configuration
-    $pthFile = Get-ChildItem -Path $pythonDir -Filter "python*._pth" | Select-Object -First 1
-    if ($pthFile) {
-        $pthContent = Get-Content $pthFile.FullName
-        $sitePackagesLine = "Lib/site-packages"
-        if ($pthContent -notcontains $sitePackagesLine) {
-            Add-Content -Path $pthFile.FullName -Value $sitePackagesLine
-            Write-Host "Added Lib/site-packages to $($pthFile.Name)" -ForegroundColor Gray
-        }
-    }
-    
-    # Copy pip module from Scripts to Lib/site-packages (embedded Python fix)
-    $scriptsDir = "$pythonDir\Scripts"
-    $sitePackagesDir = "$pythonDir\Lib\site-packages"
-    if (-not (Test-Path $sitePackagesDir)) {
-        New-Item -ItemType Directory -Path $sitePackagesDir -Force | Out-Null
-    }
-    
-    $pipModuleSrc = "$scriptsDir\pip"
-    $pipModuleDst = "$sitePackagesDir\pip"
-    if ((Test-Path $pipModuleSrc) -and -not (Test-Path $pipModuleDst)) {
-        Copy-Item -Path $pipModuleSrc -Destination $sitePackagesDir -Recurse -Force
-    }
-    # Also copy pip dist-info if it exists
-    $pipDistInfoSrc = Get-ChildItem -Path $scriptsDir -Directory -Filter "pip-*" -ErrorAction SilentlyContinue | Select-Object -First 1
-    if ($pipDistInfoSrc) {
-        $pipDistInfoDst = "$sitePackagesDir\$($pipDistInfoSrc.Name)"
-        if (-not (Test-Path $pipDistInfoDst)) {
-            Copy-Item -Path $pipDistInfoSrc.FullName -Destination $sitePackagesDir -Recurse -Force
-        }
-    }
-    
-    # Verify pip is working
-    & $pythonExe -m pip --version
-    if ($LASTEXITCODE -ne 0) {
-        throw "pip installation verification failed"
-    }
-    
-    Remove-Item $getPipPath -Force -ErrorAction SilentlyContinue
-
-    # Add Python Scripts directory to PATH (pip installs here)
-    $scriptsDir = "$pythonDir\Scripts"
-    if (-not (Test-Path $scriptsDir)) {
-        New-Item -ItemType Directory -Path $scriptsDir -Force | Out-Null
-    }
-    $env:Path = "$scriptsDir;$env:Path"
-    Write-Host "Added $scriptsDir to PATH" -ForegroundColor Gray
-
-    # Verify pip is working
-    Write-Host "Verifying pip..." -ForegroundColor Yellow
-    & $pythonExe -m pip --version
-    if ($LASTEXITCODE -ne 0) {
-        throw "pip is not working. Cannot continue."
-    }
-
     # Install PyInstaller
     Write-Host "Installing PyInstaller..." -ForegroundColor Yellow
     & $pythonExe -m pip install "pyinstaller>=6.0,<7.0"
     if ($LASTEXITCODE -ne 0) {
         throw "Failed to install PyInstaller"
-    }
-
-    # Verify PyInstaller is installed
-    Write-Host "Verifying PyInstaller..." -ForegroundColor Yellow
-    & $pythonExe -m PyInstaller --version
-    if ($LASTEXITCODE -ne 0) {
-        throw "PyInstaller installation verification failed"
-    }
-
-    # Ensure Scripts dir is on PATH for pyinstaller.exe
-    $scriptsDir = "$pythonDir\Scripts"
-    if (Test-Path $scriptsDir) {
-        $env:Path = "$scriptsDir;$env:Path"
     }
 
     # Build SNIper
@@ -218,7 +122,7 @@ if (-not (Test-Path $sniperExe)) {
         --specpath "$sniperSrc\packaging" `
         --icon "$sniperSrc\packaging\SNIper.ico" `
         --add-data "$sniperSrc\packaging\SNIper.ico;." `
-        "$sniperSrc\src\run_sniper.py"
+        "$sniperSrc\src\run_sniper.py" 2>&1 | Out-Null
 
     if ($LASTEXITCODE -ne 0) {
         throw "PyInstaller build failed"
