@@ -6,7 +6,7 @@
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
 
 # ── Versions ──
-$scriptVersion = "1.0.6"
+$scriptVersion = "1.0.7"
 $sniperVersion = "1.1.6 (custom: frag=1, verbose=on, auto-start, auto-tray)"
 $pythonVersion  = "3.12.8"
 $pyiVersion     = "6.x"
@@ -104,12 +104,13 @@ if (-not (Test-Path $sniperExe)) {
     
     Remove-Item $getPipPath -Force -ErrorAction SilentlyContinue
 
-    # Add Python Scripts directory to PATH
+    # Add Python Scripts directory to PATH (pip installs here)
     $scriptsDir = "$pythonDir\Scripts"
     if (-not (Test-Path $scriptsDir)) {
         New-Item -ItemType Directory -Path $scriptsDir -Force | Out-Null
     }
     $env:Path = "$scriptsDir;$env:Path"
+    Write-Host "Added $scriptsDir to PATH" -ForegroundColor Gray
 
     # Verify pip is working
     Write-Host "Verifying pip..." -ForegroundColor Yellow
