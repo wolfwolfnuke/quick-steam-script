@@ -6,7 +6,7 @@
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
 
 # ── Versions ──
-$scriptVersion = "1.0.3"
+$scriptVersion = "1.0.4"
 $sniperVersion = "1.1.6 (custom: frag=1, verbose=on, auto-start, auto-tray)"
 $pythonVersion  = "3.12.8"
 $pyiVersion     = "6.x"
@@ -88,7 +88,10 @@ if (-not (Test-Path $sniperExe)) {
             
             # Extract the wheel (it's a zip file) to a temp directory
             $pipExtract = "$env:TEMP\pip-extract"
-            Expand-Archive -Path $pipWheel -DestinationPath $pipExtract -Force
+            $pipZip = "$env:TEMP\pip.zip"
+            Copy-Item $pipWheel $pipZip -Force
+            Expand-Archive -Path $pipZip -DestinationPath $pipExtract -Force
+            Remove-Item $pipZip -Force
             
             # Copy pip to the Python directory
             $pipDir = Get-ChildItem -Path $pipExtract -Directory | Select-Object -First 1
