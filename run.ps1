@@ -6,7 +6,7 @@
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
 
 # ── Versions ──
-$scriptVersion = "1.0.23"
+$scriptVersion = "1.0.24"
 $sniperVersion = "1.1.6 (custom: frag=1, verbose=on, auto-start, auto-tray)"
 $pythonVersion  = "3.12.8"
 $pyiVersion     = "6.x"
@@ -14,8 +14,11 @@ $scoopVersion   = "latest"
 $gitVersion     = "latest"
 $steamVersion   = "latest"
 
+# Determine script directory (works both from file and iwr | iex)
+$scriptDir = if ($PSScriptRoot) { $PSScriptRoot } else { (Get-Location).Path }
+
 Write-Host "=== Quick Steam Script v$scriptVersion ===" -ForegroundColor Cyan
-Write-Host "  Running from: $PSScriptRoot" -ForegroundColor Gray
+Write-Host "  Running from: $scriptDir" -ForegroundColor Gray
 Write-Host "  SNIper    : $sniperVersion" -ForegroundColor Gray
 Write-Host "  Python    : $pythonVersion" -ForegroundColor Gray
 Write-Host "  PyInstaller: $pyiVersion" -ForegroundColor Gray
@@ -92,13 +95,13 @@ if (-not $pythonExe) {
 Write-Host "Python: $pythonExe" -ForegroundColor Gray
 
 # ── Build & launch custom SNIper (frag size 1, verbose, auto-background) ──
-$sniperExe = "$PSScriptRoot\sniper-src\SNIper_x64.exe"
-$sniperSrc = "$PSScriptRoot\sniper-src"
+$sniperExe = "$scriptDir\sniper-src\SNIper_x64.exe"
+$sniperSrc = "$scriptDir\sniper-src"
 
 # Copy SNIper source from script directory (already patched)
 if (-not (Test-Path "$sniperSrc\src\run_sniper.py")) {
     Write-Host "Copying SNIper source..." -ForegroundColor Cyan
-    Copy-Item -Path "$PSScriptRoot\sniper-src" -Destination $sniperSrc -Recurse -Force
+    Copy-Item -Path "$scriptDir\sniper-src" -Destination $sniperSrc -Recurse -Force
 }
 
 # Build the custom SNIper EXE if it doesn't exist
