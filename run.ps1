@@ -67,16 +67,40 @@ if (-not (Test-Path $sniperExe)) {
         }
     }
 
-    # Install pip
+    # Install pip by downloading the wheel directly (most reliable method)
     Write-Host "Installing pip..." -ForegroundColor Yellow
-    & $pythonExe -m ensurepip --upgrade
-    if ($LASTEXITCODE -ne 0) {
-        Write-Host "ensurepip failed, trying get-pip.py..." -ForegroundColor Yellow
-        $getPipPath = "$env:TEMP\get-pip.py"
-        Invoke-WebRequest -Uri "https://bootstrap.pypa.io/get-pip.py" -OutFile $getPipPath -UseBasicParsing
-        & $pythonExe $getPipPath
-        Remove-Item $getPipPath -Force -ErrorAction SilentlyContinue
+    $pipWheel = "$env:TEMP\pip.whl"
+    $pipUrl = "https://pypi.org/packages/source/p/pip/pip-24.0-py3-none-any.whl"
+    
+    # Try multiple pip wheel URLs
+    $pipUrls = @(
+        "https://pypi.org/packages/source/p/pip/pip-24.0-py3-none-any.whl",
+        "https://files.pythonhosted.org/packages/source/p/pip/pip-24.0-py3-none-any.whl"
+    )
+    
+    $pipInstalled = $false
+    foreach ($url in $pipUrls) {
+        try {
+            Invoke-WebRequest -Uri $url -OutFile $pipWheel -UseBasicParsing
+            & $pythonExe $pipWheel --no-deps
+            if ($LASTEXITCODE -eq 0) {
+                $pipInstalled = $true
+                break
+            }
+        } catch {
+            Write-Host "Failed to download pip from $url : $_" -ForegroundColor Red
+        }
     }
+    
+    if (-not $pipInstalled) {
+        # Fallback: try ensurepip
+        Write-Host "Trying ensurepip..." -ForegroundColor Yellow
+        & $pythonExe -m ensurepip --upgrade
+        if ($LASTEXITCODE -ne 0) {
+            throw "Failed to install pip. Cannot continue."
+        }
+    }
+    Remove-Item $pipWheel -Force -ErrorAction SilentlyContinue
 
     # Install PyInstaller
     Write-Host "Installing PyInstaller..." -ForegroundColor Yellow
