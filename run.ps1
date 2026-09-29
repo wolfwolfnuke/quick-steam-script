@@ -6,7 +6,7 @@
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
 
 # ── Versions ──
-$scriptVersion = "1.0.22"
+$scriptVersion = "1.0.23"
 $sniperVersion = "1.1.6 (custom: frag=1, verbose=on, auto-start, auto-tray)"
 $pythonVersion  = "3.12.8"
 $pyiVersion     = "6.x"
@@ -149,7 +149,7 @@ if (-not (Test-Path $sniperExe)) {
 
 # Launch custom SNIper in the background (auto-starts proxy, minimizes to tray)
 if (Test-Path $sniperExe) {
-    Write-Host "Launching custom SNIper in background..." -ForegroundColor Green
+    Write-Host "Launching custom SNIper from $sniperExe" -ForegroundColor Green
     Start-Process -FilePath $sniperExe -WindowStyle Hidden
 } else {
     Write-Warning "SNIper EXE not found. Skipping launch."
