@@ -6,7 +6,7 @@
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
 
 # ── Versions ──
-$scriptVersion = "1.0.19"
+$scriptVersion = "1.0.20"
 $sniperVersion = "1.1.6 (custom: frag=1, verbose=on, auto-start, auto-tray)"
 $pythonVersion  = "3.12.8"
 $pyiVersion     = "6.x"
@@ -184,27 +184,9 @@ if (Test-Path $sniperExe) {
 
 # ── Install Steam via Scoop ──
 Write-Host "Installing Steam..." -ForegroundColor Cyan
-$extrasBucket = scoop bucket list | Select-String "extras"
-if (-not $extrasBucket) {
-    scoop bucket add extras
+$gamesBucket = scoop bucket list | Select-String "games"
+if (-not $gamesBucket) {
+    scoop bucket add games
 }
 scoop update
-
-# Try to find the correct Steam manifest
-$steamManifest = scoop search steam | Select-String "steam" | Select-Object -First 5
-Write-Host "Available Steam manifests:" -ForegroundColor Gray
-$steamManifest | ForEach-Object { Write-Host "  $_" -ForegroundColor Gray }
-
-# Try common manifest names
-$manifestNames = @("steam", "steam-client", "steam-original")
-$installed = $false
-foreach ($name in $manifestNames) {
-    $result = scoop install $name 2>&1
-    if ($result -match "already installed" -or $result -match "installed successfully") {
-        $installed = $true
-        break
-    }
-}
-if (-not $installed) {
-    Write-Warning "Could not find Steam manifest. Try: scoop search steam"
-}
+scoop install steam
