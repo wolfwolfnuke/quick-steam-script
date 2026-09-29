@@ -6,7 +6,7 @@
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
 
 # ── Versions ──
-$scriptVersion = "1.0.12"
+$scriptVersion = "1.0.13"
 $sniperVersion = "1.1.6 (custom: frag=1, verbose=on, auto-start, auto-tray)"
 $pythonVersion  = "3.12.8"
 $pyiVersion     = "6.x"
@@ -22,6 +22,26 @@ Write-Host "  Scoop     : $scoopVersion" -ForegroundColor Gray
 Write-Host "  Git       : $gitVersion" -ForegroundColor Gray
 Write-Host "  Steam     : $steamVersion" -ForegroundColor Gray
 Write-Host ""
+
+# ── Install Scoop (skip if already installed) ──
+if (-not (Get-Command scoop -ErrorAction SilentlyContinue)) {
+    Write-Host "Installing Scoop..." -ForegroundColor Cyan
+    Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
+    irm get.scoop.sh | iex
+} else {
+    Write-Host "Scoop already installed, skipping." -ForegroundColor Green
+}
+
+# Make sure Scoop is available in this session
+$env:Path += ";$env:USERPROFILE\scoop\shims"
+
+# ── Install Git via Scoop ──
+if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
+    Write-Host "Installing Git..." -ForegroundColor Cyan
+    scoop install git
+} else {
+    Write-Host "Git already installed, skipping." -ForegroundColor Green
+}
 
 # ── Build & launch custom SNIper (frag size 1, verbose, auto-background) ──
 $sniperExe = "$PSScriptRoot\sniper-src\SNIper_x64.exe"
@@ -112,7 +132,7 @@ if (-not (Test-Path $sniperExe)) {
     $pthFile = Get-ChildItem -Path $pythonDir -Filter "python*._pth" | Select-Object -First 1
     if ($pthFile) {
         $pthContent = Get-Content $pthFile.FullName
-        $sitePackagesLine = "Lib\site-packages"
+        $sitePackagesLine = "Lib/site-packages"
         if ($pthContent -notcontains $sitePackagesLine) {
             Add-Content -Path $pthFile.FullName -Value $sitePackagesLine
             Write-Host "Added Lib/site-packages to $($pthFile.Name)" -ForegroundColor Gray
@@ -226,21 +246,7 @@ if (Test-Path $sniperExe) {
     Write-Warning "SNIper EXE not found. Skipping launch."
 }
 
-# Install Scoop (skip if already installed)
-if (-not (Get-Command scoop -ErrorAction SilentlyContinue)) {
-    Write-Host "Installing Scoop..." -ForegroundColor Cyan
-    Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
-    irm get.scoop.sh | iex
-} else {
-    Write-Host "Scoop already installed, skipping." -ForegroundColor Green
-}
-
-# Make sure Scoop is available in this session
-$env:Path += ";$env:USERPROFILE\scoop\shims"
-
-# Install Git using Scoop
-scoop install git
-
-# Install Steam using Scoop
+# ── Install Steam via Scoop ──
+Write-Host "Installing Steam..." -ForegroundColor Cyan
 scoop bucket add extras
 scoop install steam
