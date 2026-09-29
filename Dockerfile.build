@@ -1,0 +1,60 @@
+FROM ubuntu:22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV WINEDEBUG=-all
+ENV WINEARCH=win64
+ENV DISPLAY=:99
+
+# Install Wine and dependencies
+RUN dpkg --add-architecture i386 && \
+    apt-get update -qq && \
+    apt-get install -y -qq \
+        wine64 \
+        wine32 \
+        xvfb \
+        x11-apps \
+        cabextract \
+        wget \
+        curl \
+        && \
+    rm -rf /var/lib/apt/lists/*
+
+# Initialize Wine
+RUN wineboot --init 2>/dev/null; \
+    wineserver -w 2>/dev/null; \
+    echo "Wine initialized"
+
+# Download and install Python 3.12 for Windows
+RUN wget -q "https://www.python.org/ftp/python/3.12.8/python-3.12.8-amd64.exe" -O /tmp/python-installer.exe && \
+    wine /tmp/python-installer.exe /quiet InstallAllUsers=0 PrependPath=1 Include_test=0 && \
+    rm /tmp/python-installer.exe
+
+# Install PyInstaller
+RUN wine python -m pip install --upgrade pip && \
+    wine python -m pip install "pyinstaller>=6.0,<7.0"
+
+WORKDIR /build
+
+# Copy the source
+COPY sniper-src/ /build/sniper-src/
+
+# Build SNIper
+RUN cd /build/sniper-src && \
+    wine python -m PyInstaller \
+        --onefile \
+        --noconsole \
+        --noupx \
+        --clean \
+        --noconfirm \
+        --paths "/build/sniper-src/src" \
+        --name "SNIper_x64" \
+        --distpath "/build/sniper-src/packaging/dist" \
+        --workpath "/build/sniper-src/packaging/build" \
+        --specpath "/build/sniper-src/packaging" \
+        --icon "/build/sniper-src/packaging/SNIper.ico" \
+        --add-data "/build/sniper-src/packaging/SNIper.ico;." \
+        "/build/sniper-src/src/run_sniper.py" && \
+    mv /build/sniper-src/packaging/dist/SNIper_x64.exe /build/sniper-src/SNIper_x64.exe && \
+    rm -rf /build/sniper-src/packaging/build /build/sniper-src/packaging/dist /build/sniper-src/packaging/SNIper_x64.spec
+
+CMD ["ls", "-la", "/build/sniper-src/SNIper_x64.exe"]
